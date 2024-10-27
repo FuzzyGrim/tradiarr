@@ -1,4 +1,3 @@
-version: "3"
 services:
   yamtrack:
     container_name: yamtrack
@@ -10,6 +9,7 @@ services:
     environment:
       - SECRET=longstring
       - REDIS_URL=redis://redis:6379
+      - ALLOWED_HOSTS=localhost
       - DB_HOST=db
       - DB_NAME=yamtrack
       - DB_USER=yamtrack
