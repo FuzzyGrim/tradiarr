@@ -23,6 +23,7 @@ DEBUG = config("DEBUG", default=False, cast=bool)
 INTERNAL_IPS = ["127.0.0.1"]
 
 ALLOWED_HOSTS = config("ALLOWED_HOSTS", default="*", cast=Csv())
+CSRF_TRUSTED_ORIGINS = config("CSRF", default="*", cast=Csv())
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 # Application definition
