@@ -13,8 +13,8 @@ You can try the app at [yamtrack.fuzzygrim.com](https://yamtrack.fuzzygrim.com) 
 
 ## Features
 
-- Track movies, tv shows, anime, manga and games
-- Track each season of a tv show individually and episodes watched
+- Track movies, tv shows, anime, manga and games.
+- Track each season of a tv show individually and episodes watched.
 - Save score, status, progress, repeats (rewatches, rereads...), start and end dates, or write a note.
 - Keep a tracking history with each action with a media, such as when you added it, when you started it, when you started watching it again, etc.
 - Use personal lists to organize your media for any purpose, add other members to collaborate on your lists.
@@ -46,14 +46,15 @@ Alternatively, if you need a PostgreSQL database, you can use the `docker-compos
 | MAL_API         | String | MyAnimeList API key, for anime and manga, a default key is provided                                                                                                         |
 | MAL_NSFW        | Bool   | Default to false, set to true to include adult content in anime and manga searches from MyAnimeList                                                                         |
 | MU_NSFW         | Bool   | Default to false, set to true to include adult content in manga searches from MangaUpdates                                                                                  |
-| IGDB_ID         | String | IGDB API key for games, a default key is provided but it's recommended to get your own as it has a low rate limit.                                                          |
-| IGDB_SECRET     | String | IGDB API secret for games, a default value is provided but it's recommended to get your own as it has a low rate limit.                                                     |
+| IGDB_ID         | String | IGDB API key for games, a default key is provided but it's recommended to get your own as it has a low rate limit                                                           |
+| IGDB_SECRET     | String | IGDB API secret for games, a default value is provided but it's recommended to get your own as it has a low rate limit                                                      |
 | IGDB_NSFW       | Bool   | Default to false, set to true to include adult content in game searches                                                                                                     |
 | SIMKL_ID        | String | Simkl API key for importing media, a default key is provided but you can get one at [Simkl Developer](https://simkl.com/settings/developer/new/custom-search/)              |
 | SIMKL_SECRET    | String | Simkl API secret for importing media, a default secret is provided but you can get one at [Simkl Developer](https://simkl.com/settings/developer/new/custom-search/)        |
-| REDIS_URL       | String | Default to redis://localhost:6379, Redis is needed for processing background tasks, set this to your redis server url.                                                      |
+| REDIS_URL       | String | Default to redis://localhost:6379, Redis is needed for processing background tasks, set this to your redis server url                                                       |
 | SECRET          | String | [Secret key](https://docs.djangoproject.com/en/stable/ref/settings/#secret-key) used for cryptographic signing, should be a random string                                   |
-| ALLOWED_HOSTS   | List   | Host/domain names that this Django site can serve, set this to your domain name if exposing to the public                                                                   |
+| ALLOWED_HOSTS   | List   | Host/domain names that this Django site can serve: besides localhost, add your local IP if you want to access from another computer in the house, then add your public IP if you want to access from outside, and/or your domain name if you plan to use one                                                                                                                                                                                                  |
+| CSRF            | List   | HTTPS domain names that this Django site can serve, set this to your domain name if exposing to the public via `https` (in this case include `https://` but no trailing `/`)|
 | REGISTRATION    | Bool   | Default to true, set to false to disable user registration                                                                                                                  |
 | DEBUG           | Bool   | Default to false, set to true for debugging                                                                                                                                 |
 | PUID            | Int    | User ID for the app, default to 1000                                                                                                                                        |
@@ -95,6 +96,7 @@ IGDB_ID=IGDB_ID
 IGDB_SECRET=IGDB_SECRET
 SECRET=SECRET
 DEBUG=True
+ALLOWED_HOSTS=localhost
 ```
 
 Then run the following commands.
