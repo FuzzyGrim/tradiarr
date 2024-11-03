@@ -12,7 +12,9 @@ max-doc-length = 88
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
 
-
 [tool.djlint]
 preserve_blank_lines = true
 ignore = "H006"
+
+[tool.coverage.run]
+concurrency = ["greenlet"]

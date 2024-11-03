@@ -2,14 +2,13 @@ import datetime
 import logging
 
 from django.conf import settings
-from django.core.exceptions import ValidationError
 from django.core.validators import (
     DecimalValidator,
     MaxValueValidator,
     MinValueValidator,
 )
 from django.db import models
-from django.db.models import Max, Sum
+from django.db.models import CheckConstraint, Max, Q, Sum, UniqueConstraint
 from django.urls import reverse
 from model_utils import FieldTracker
 from simple_history.models import HistoricalRecords
@@ -38,12 +37,17 @@ STATUS_PLANNING = "Planning"
 STATUS_PAUSED = "Paused"
 STATUS_DROPPED = "Dropped"
 
+SOURCES = ["tmdb", "mal", "mangaupdates", "igdb", "manual"]
+
 
 class Item(models.Model):
     """Model for items in custom lists."""
 
     media_id = models.PositiveIntegerField()
-    source = models.CharField(max_length=255)
+    source = models.CharField(
+        max_length=20,
+        choices=[(source, source) for source in SOURCES],
+    )
     media_type = models.CharField(
         max_length=10,
         choices=[
@@ -59,12 +63,55 @@ class Item(models.Model):
     class Meta:
         """Meta options for the model."""
 
-        unique_together = [
-            "media_id",
-            "source",
-            "media_type",
-            "season_number",
-            "episode_number",
+        constraints = [
+            UniqueConstraint(
+                fields=["media_id", "source", "media_type"],
+                condition=Q(season_number__isnull=True, episode_number__isnull=True),
+                name="unique_item_without_season_episode",
+            ),
+            UniqueConstraint(
+                fields=["media_id", "source", "media_type", "season_number"],
+                condition=Q(season_number__isnull=False, episode_number__isnull=True),
+                name="unique_item_with_season",
+            ),
+            UniqueConstraint(
+                fields=[
+                    "media_id",
+                    "source",
+                    "media_type",
+                    "season_number",
+                    "episode_number",
+                ],
+                condition=Q(season_number__isnull=False, episode_number__isnull=False),
+                name="unique_item_with_season_episode",
+            ),
+            CheckConstraint(
+                check=Q(
+                    media_type="season",
+                    season_number__isnull=False,
+                    episode_number__isnull=True,
+                )
+                | ~Q(media_type="season"),
+                name="season_number_required_for_season",
+            ),
+            CheckConstraint(
+                check=Q(
+                    media_type="episode",
+                    season_number__isnull=False,
+                    episode_number__isnull=False,
+                )
+                | ~Q(media_type="episode"),
+                name="season_and_episode_required_for_episode",
+            ),
+            CheckConstraint(
+                check=Q(
+                    ~Q(media_type__in=["season", "episode"]),
+                    season_number__isnull=True,
+                    episode_number__isnull=True,
+                )
+                | Q(media_type__in=["season", "episode"]),
+                name="no_season_episode_for_other_types",
+            ),
         ]
         ordering = ["media_id"]
 
@@ -77,28 +124,17 @@ class Item(models.Model):
                 name += f"E{self.episode_number}"
         return name
 
-    def save(self, *args, **kwargs):
-        """Save the item instance."""
-        self.full_clean()
-        super().save(*args, **kwargs)
-
-    def clean(self):
-        """Validate the item instance."""
-        super().clean()
-        if self.media_type == "season":
-            if self.season_number is None:
-                msg = "Season number is required for season."
-                raise ValidationError(msg)
-            if self.episode_number is not None:
-                msg = "Episode number should not be set for season."
-                raise ValidationError(msg)
-        elif self.media_type == "episode":
-            if self.season_number is None or self.episode_number is None:
-                msg = "Both season number and episode number are required for episode."
-                raise ValidationError(msg)
-        elif self.season_number is not None or self.episode_number is not None:
-            msg = "Season number and episode number should not be set for this."
-            raise ValidationError(msg)
+    @classmethod
+    def generate_manual_id(cls):
+        """Generate a new ID for manual items."""
+        return (
+            cls.objects.filter(source="manual")
+            .exclude(
+                Q(media_type__in=["season", "episode"]),
+            )
+            .count()
+            + 1
+        )
 
     @property
     def url(self):
@@ -107,6 +143,7 @@ class Item(models.Model):
             return reverse(
                 "season_details",
                 kwargs={
+                    "source": self.source,
                     "media_id": self.media_id,
                     "title": slug(self.title),
                     "season_number": self.season_number,
@@ -115,6 +152,7 @@ class Item(models.Model):
         return reverse(
             "media_details",
             kwargs={
+                "source": self.source,
                 "media_type": self.media_type,
                 "media_id": self.media_id,
                 "title": slug(self.title),
@@ -283,11 +321,7 @@ class TV(Media):
         """Save the media instance."""
         super(Media, self).save(*args, **kwargs)
 
-        if (
-            "status" in self.tracker.changed()
-            and self.status == STATUS_COMPLETED
-            and self.progress < tmdb.tv(self.item.media_id)["max_progress"]
-        ):
+        if "status" in self.tracker.changed() and self.status == STATUS_COMPLETED:
             self.completed()
 
     @property
@@ -318,22 +352,36 @@ class TV(Media):
 
     def completed(self):
         """Create remaining seasons and episodes for a TV show."""
+        tv_metadata = services.get_media_metadata(
+            self.item.media_type,
+            self.item.media_id,
+            self.item.source,
+        )
+        max_progress = tv_metadata["max_progress"]
+
+        if not max_progress or self.progress > max_progress:
+            return
+
         seasons_to_update = []
         episodes_to_create = []
 
-        tv_metadata = tmdb.tv(self.item.media_id)
         season_numbers = [
             season["season_number"]
             for season in tv_metadata["related"]["seasons"]
             if season["season_number"] != 0
         ]
-        tv_seasons_metadata = tmdb.tv_with_seasons(self.item.media_id, season_numbers)
+        tv_with_seasons_metadata = services.get_media_metadata(
+            "tv_with_seasons",
+            self.item.media_id,
+            self.item.source,
+            season_numbers,
+        )
         for season_number in season_numbers:
-            season_metadata = tv_seasons_metadata[f"season/{season_number}"]
+            season_metadata = tv_with_seasons_metadata[f"season/{season_number}"]
 
             item, _ = Item.objects.get_or_create(
                 media_id=self.item.media_id,
-                source="tmdb",
+                source=self.item.source,
                 media_type="season",
                 season_number=season_number,
                 defaults={
@@ -401,7 +449,12 @@ class Season(Media):
         super(Media, self).save(*args, **kwargs)
 
         if "status" in self.tracker.changed() and self.status == STATUS_COMPLETED:
-            season_metadata = tmdb.season(self.item.media_id, self.item.season_number)
+            season_metadata = services.get_media_metadata(
+                "season",
+                self.item.media_id,
+                self.item.source,
+                [self.item.season_number],
+            )
             bulk_create_with_history(
                 self.get_remaining_eps(season_metadata),
                 Episode,
@@ -458,7 +511,12 @@ class Season(Media):
     def increase_progress(self):
         """Watch the next episode of the season."""
         current_episode = self.current_episode
-        season_metadata = tmdb.season(self.item.media_id, self.item.season_number)
+        season_metadata = services.get_media_metadata(
+            "season",
+            self.item.media_id,
+            self.item.source,
+            [self.item.season_number],
+        )
         episodes = season_metadata["episodes"]
 
         if current_episode:
@@ -494,6 +552,10 @@ class Season(Media):
                 episode,
             )
         except Episode.DoesNotExist:
+            # from the form, watch_date is a string
+            if watch_date == "None":
+                watch_date = None
+
             episode = Episode.objects.create(
                 related_season=self,
                 item=item,
@@ -546,7 +608,7 @@ class Season(Media):
             self.item.media_type,
             self.item.media_id,
             self.item.source,
-            self.item.season_number,
+            [self.item.season_number],
         )
         response = {"item": self.item}
         max_progress = media_metadata["max_progress"]
@@ -568,10 +630,15 @@ class Season(Media):
                 item__media_id=self.item.media_id,
                 item__media_type="tv",
                 item__season_number=None,
+                item__source=self.item.source,
                 user=self.user,
             )
         except TV.DoesNotExist:
-            tv_metadata = tmdb.tv(self.item.media_id)
+            tv_metadata = services.get_media_metadata(
+                "tv",
+                self.item.media_id,
+                self.item.source,
+            )
 
             # creating tv with multiple seasons from a completed season
             if (
@@ -635,16 +702,25 @@ class Season(Media):
     def get_episode_item(self, episode_number, season_metadata=None):
         """Get the episode item instance, create it if it doesn't exist."""
         if not season_metadata:
-            season_metadata = tmdb.season(self.item.media_id, self.item.season_number)
+            season_metadata = services.get_media_metadata(
+                "season",
+                self.item.media_id,
+                self.item.source,
+                [self.item.season_number],
+            )
 
         image = settings.IMG_NONE
         for episode in season_metadata["episodes"]:
-            if episode["episode_number"] == episode_number and episode["still_path"]:
-                image = f"http://image.tmdb.org/t/p/original{episode['still_path']}"
+            if episode["episode_number"] == episode_number:
+                if episode.get("still_path"):
+                    image = f"http://image.tmdb.org/t/p/original{episode['still_path']}"
+                else:
+                    image = episode["image"]
+                break
 
         item, _ = Item.objects.get_or_create(
             media_id=self.item.media_id,
-            source="tmdb",
+            source=self.item.source,
             media_type="episode",
             season_number=self.item.season_number,
             episode_number=episode_number,
@@ -693,11 +769,14 @@ class Episode(models.Model):
 
         if self.related_season.status in (STATUS_IN_PROGRESS, STATUS_REPEATING):
             season_number = self.item.season_number
-            tv_metadata = tmdb.tv_with_seasons(
+            tv_with_seasons_metadata = services.get_media_metadata(
+                "tv_with_seasons",
                 self.item.media_id,
+                self.item.source,
                 [season_number],
             )
-            max_progress = len(tv_metadata[f"season/{season_number}"]["episodes"])
+            season_metadata = tv_with_seasons_metadata[f"season/{season_number}"]
+            max_progress = len(season_metadata["episodes"])
             total_repeats = self.related_season.episodes.aggregate(
                 total_repeats=Sum("repeats"),
             )["total_repeats"]
@@ -708,7 +787,9 @@ class Episode(models.Model):
                 self.related_season.status = STATUS_COMPLETED
                 self.related_season.save_base(update_fields=["status"])
 
-                last_season = tv_metadata["related"]["seasons"][-1]["season_number"]
+                last_season = tv_with_seasons_metadata["related"]["seasons"][-1][
+                    "season_number"
+                ]
                 # mark the TV show as completed if it's the last season
                 if season_number == last_season:
                     self.related_season.related_tv.status = STATUS_COMPLETED

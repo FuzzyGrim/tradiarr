@@ -51,7 +51,7 @@
           {% for media in media_list %}
             <tr>
               <td class="nostretch">
-                <a href="{% if media.item.season_number != None %}{% url 'season_details' media_id=media.item.media_id title=media.item.title|slug season_number=media.item.season_number %}{% else %}{% url 'media_details' media_type=media_type media_id=media.item.media_id title=media.item.title|slug %}?source={{ media.item.source }}{% endif %}">
+                <a href="{{ media.item.url }}">
                   <img class="lazyload object-fit-cover"
                        data-src="{{ media.item.image }}"
                        data-expand="1000"
@@ -61,11 +61,7 @@
                 </a>
               </td>
               <td class="media-title text-truncate">
-                {% if media.item.season_number != None %}
-                  <a href="{% url 'season_details' media_id=media.item.media_id title=media.item.title|slug season_number=media.item.season_number %}">{{ media }}</a>
-                {% else %}
-                  <a href="{% url 'media_details' media_type=media_type media_id=media.item.media_id title=media.item.title|slug %}?source={{ media.item.source }}">{{ media.item.title }}</a>
-                {% endif %}
+                <a href="{{ media.item.url }}">{{ media }}</a>
               </td>
               <td>{{ media.score }}</td>
               <td>{{ media.status }}</td>

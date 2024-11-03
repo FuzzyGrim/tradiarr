@@ -2,6 +2,7 @@ import logging
 
 from django.apps import apps
 from django.contrib import messages
+from django.db import IntegrityError
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -10,7 +11,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from app import database, helpers
 from app.forms import FilterForm, ManualItemForm, get_form_class
 from app.models import STATUS_IN_PROGRESS, Episode, Item, Season
-from app.providers import igdb, mal, mangaupdates, services, tmdb
+from app.providers import igdb, mal, mangaupdates, manual, services, tmdb
 
 logger = logging.getLogger(__name__)
 
@@ -117,9 +118,8 @@ def media_search(request):
 
 
 @require_GET
-def media_details(request, media_type, media_id, title):  # noqa: ARG001 title for URL
+def media_details(request, source, media_type, media_id, title):  # noqa: ARG001 title for URL
     """Return the details page for a media item."""
-    source = request.GET.get("source")
     media_metadata = services.get_media_metadata(media_type, media_id, source)
 
     context = {"media": media_metadata}
@@ -127,23 +127,34 @@ def media_details(request, media_type, media_id, title):  # noqa: ARG001 title f
 
 
 @require_GET
-def season_details(request, media_id, title, season_number):  # noqa: ARG001 title for URL
+def season_details(request, source, media_id, title, season_number):  # noqa: ARG001 For URL
     """Return the details page for a season."""
-    tv_metadata = tmdb.tv_with_seasons(media_id, [season_number])
-    season_metadata = tv_metadata[f"season/{season_number}"]
-
+    tv_with_seasons_metadata = services.get_media_metadata(
+        "tv_with_seasons",
+        media_id,
+        source,
+        [season_number],
+    )
+    season_metadata = tv_with_seasons_metadata[f"season/{season_number}"]
     episodes_in_db = Episode.objects.filter(
         item__media_id=media_id,
+        item__source=source,
         item__season_number=season_number,
         related_season__user=request.user,
     ).values("item__episode_number", "watch_date", "repeats")
 
-    season_metadata["episodes"] = tmdb.process_episodes(
-        season_metadata,
-        episodes_in_db,
-    )
+    if source == "manual":
+        season_metadata["episodes"] = manual.process_episodes(
+            season_metadata,
+            episodes_in_db,
+        )
+    else:
+        season_metadata["episodes"] = tmdb.process_episodes(
+            season_metadata,
+            episodes_in_db,
+        )
 
-    context = {"season": season_metadata, "tv": tv_metadata}
+    context = {"season": season_metadata, "tv": tv_with_seasons_metadata}
     return render(request, "app/season_details.html", context)
 
 
@@ -249,6 +260,7 @@ def episode_handler(request):
     media_id = request.POST["media_id"]
     season_number = request.POST["season_number"]
     episode_number = request.POST["episode_number"]
+    source = request.POST["source"]
 
     try:
         related_season = Season.objects.get(
@@ -258,15 +270,20 @@ def episode_handler(request):
             user=request.user,
         )
     except Season.DoesNotExist:
-        tv_metadata = tmdb.tv_with_seasons(media_id, [season_number])
-        season_metadata = tv_metadata[f"season/{season_number}"]
+        tv_with_seasons_metadata = services.get_media_metadata(
+            "tv_with_seasons",
+            media_id,
+            source,
+            [season_number],
+        )
+        season_metadata = tv_with_seasons_metadata[f"season/{season_number}"]
 
         item = Item.objects.create(
             media_id=media_id,
             source="tmdb",
             media_type="season",
             season_number=season_number,
-            title=tv_metadata["title"],
+            title=tv_with_seasons_metadata["title"],
             image=season_metadata["image"],
         )
         related_season = Season(
@@ -295,46 +312,50 @@ def episode_handler(request):
 
 
 @require_http_methods(["GET", "POST"])
-def add_manual_item(request):
+def create_item(request):
     """Return the form for manually adding media items."""
     if request.method == "POST":
-        form = ManualItemForm(request.POST)
+        form = ManualItemForm(request.POST, user=request.user)
         if form.is_valid():
-            item = form.save(commit=False)
-            item.source = "manual"
-            manual_items_count = Item.objects.filter(source="manual").count()
-            item.media_id = manual_items_count + 1
-            item.save()
+            try:
+                item = form.save()
+            except IntegrityError:
+                msg = "This item already exists in the database."
+                messages.error(request, msg)
+                logger.warning(msg)
+                return redirect("create_item")
 
             updated_request = request.POST.copy()
             updated_request.update({"item": item.id})
             media_form = get_form_class(item.media_type)(updated_request)
+
             if media_form.is_valid():
                 media_form.instance.user = request.user
+                if item.media_type == "season":
+                    media_form.instance.related_tv = form.cleaned_data["parent_tv"]
+                elif item.media_type == "episode":
+                    media_form.instance.related_season = form.cleaned_data[
+                        "parent_season"
+                    ]
                 media_form.save()
-                messages.success(request, f"{item} added successfully.")
-            else:
-                messages.error(
-                    request,
-                    "Could not save the media item, there were errors in the form.",
-                )
-                logger.error(media_form.errors.as_json())
-                item.delete()
+                msg = f"{item} added successfully."
+                messages.success(request, msg)
+                logger.info(msg)
 
-            return redirect("add_manual_item")
+            return redirect("create_item")
 
-    form = ManualItemForm()
+    form = ManualItemForm(user=request.user)
     context = {"form": form, "media_form": get_form_class(form["media_type"].value())}
 
-    return render(request, "app/add_manual.html", context)
+    return render(request, "app/create_item.html", context)
 
 
 @require_GET
-def add_manual_media(request):
+def create_media(request):
     """Return the form for manually adding media items."""
     media_type = request.GET.get("media_type")
     context = {"form": get_form_class(media_type)}
-    return render(request, "app/components/add_manual_form.html", context)
+    return render(request, "app/components/create_media.html", context)
 
 
 @require_GET

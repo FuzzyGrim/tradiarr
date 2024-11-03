@@ -5,6 +5,7 @@ from django.conf import settings
 from django.urls import reverse
 
 from app import models
+from app.models import Item
 
 
 def get_form_class(media_type):
@@ -55,6 +56,20 @@ class CustomDurationField(forms.CharField):
 class ManualItemForm(forms.ModelForm):
     """Form for adding items to the database."""
 
+    parent_tv = forms.ModelChoiceField(
+        required=False,
+        queryset=models.TV.objects.none(),
+        empty_label="Select",
+        label="Parent TV Show",
+    )
+
+    parent_season = forms.ModelChoiceField(
+        required=False,
+        queryset=models.Season.objects.none(),
+        empty_label="Select",
+        label="Parent Season",
+    )
+
     class Meta:
         """Bind form to model."""
 
@@ -63,34 +78,88 @@ class ManualItemForm(forms.ModelForm):
             "media_type",
             "title",
             "image",
+            "season_number",
+            "episode_number",
         ]
 
     def __init__(self, *args, **kwargs):
         """Initialize the form."""
+        self.user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
+        if self.user:
+            self.fields["parent_tv"].queryset = models.TV.objects.filter(
+                user=self.user,
+                item__source="manual",
+                item__media_type="tv",
+            )
+            self.fields["parent_season"].queryset = models.Season.objects.filter(
+                user=self.user,
+                item__source="manual",
+                item__media_type="season",
+            )
+
         self.fields["media_type"].widget.attrs = {
-            "hx-get": reverse("add_manual_media"),
+            "hx-get": reverse("create_media"),
             "hx-target": "#media-form",
             "initial": "movie",
         }
-
-        # Remove TV-related media types from the choices
-        filtered_choices = [
-            item
-            for item in self.fields["media_type"].choices
-            if item[0] not in ("tv", "season", "episode")
-        ]
-        self.fields["media_type"].choices = filtered_choices
-
         self.fields["image"].required = False
+        self.fields["title"].required = False
+
+        self.helper = FormHelper()
+
+        self.helper.layout = Layout(
+            "media_type",
+            "parent_tv",
+            "parent_season",
+            "title",
+            "image",
+            "season_number",
+            "episode_number",
+        )
+
+        self.helper.form_tag = False
 
     def clean(self):
         """Validate the form."""
         cleaned_data = super().clean()
         image = cleaned_data.get("image")
+        media_type = cleaned_data.get("media_type")
+        title = cleaned_data.get("title")
+
         if not image:
             cleaned_data["image"] = settings.IMG_NONE
+
+        # Title not required for season/episode
+        if media_type in ["season", "episode"] and not title:
+            if media_type == "season":
+                parent = cleaned_data.get("parent_tv")
+                cleaned_data["title"] = parent.item.title
+            else:  # episode
+                parent = cleaned_data.get("parent_season")
+                cleaned_data["title"] = parent.item.title
+                cleaned_data["season_number"] = parent.item.season_number
+
         return cleaned_data
+
+    def save(self, commit=True):  # noqa: FBT002
+        """Save the form and handle manual media ID generation."""
+        instance = super().save(commit=False)
+        instance.source = "manual"
+
+        if instance.media_type == "season":
+            parent_tv = self.cleaned_data["parent_tv"]
+            instance.media_id = parent_tv.item.media_id
+        elif instance.media_type == "episode":
+            parent_season = self.cleaned_data["parent_season"]
+            instance.media_id = parent_season.item.media_id
+            instance.season_number = parent_season.item.season_number
+        else:
+            instance.media_id = Item.generate_manual_id()
+
+        if commit:
+            instance.save()
+        return instance
 
 
 class MediaForm(forms.ModelForm):
@@ -220,12 +289,12 @@ class EpisodeForm(forms.ModelForm):
 
         widgets = {
             "item": forms.HiddenInput(),
+            "watch_date": forms.DateInput(attrs={"type": "date"}),
         }
 
     def __init__(self, *args, **kwargs):
         """Initialize the form."""
         super().__init__(*args, **kwargs)
-        self.fields["watch_date"].required = True
 
 
 class GameForm(MediaForm):

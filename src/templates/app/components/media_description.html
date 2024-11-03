@@ -10,7 +10,7 @@
 
     {% if tv %}
       <h2 class="tv-title fs-5 mb-0">
-        <a href="{% url 'media_details' media_type="tv" media_id=tv.media_id title=tv.title|slug %}">
+        <a href="{% url 'media_details' source=tv.source media_type="tv" media_id=tv.media_id title=tv.title|slug %}">
           {{ tv.title|capfirst }}
         </a>
       </h2>

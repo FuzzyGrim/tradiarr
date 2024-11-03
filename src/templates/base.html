@@ -94,22 +94,32 @@
             </li>
             <hr>
             <li>
-              <a href="{% url 'lists' %}" class="nav-link {% if request.path == "/lists" %}active{% endif %}">
+              {% url 'create_item' as create_item_url %}
+              <a href="{{ create_item_url }}" class="nav-link {% if request.path == create_item_url %}active{% endif %}">
+                <i class="bi bi-plus-circle me-2 align-middle"></i> Create
+              </a>
+            </li>
+            <li>
+              {% url 'lists' as lists_url %}
+              <a href="{{ lists_url }}" class="nav-link {% if request.path == lists_url %}active{% endif %}">
                 <i class="bi bi-collection me-2 align-middle"></i> Lists
               </a>
             </li>
             <li>
-              <a href="{% url 'tasks' %}" class="nav-link {% if request.path == "/tasks" %}active{% endif %}">
+              {% url 'tasks' as tasks_url %}
+              <a href="{{ tasks_url }}" class="nav-link {% if request.path == tasks_url %}active{% endif %}">
                 <i class="bi bi-list-task me-2 align-middle"></i> Tasks
               </a>
             </li>
             <li>
-              <a href="{% url 'calendar' %}" class="nav-link {% if request.path == "/calendar" %}active{% endif %}">
+              {% url 'calendar' as calendar_url %}
+              <a href="{{ calendar_url }}" class="nav-link {% if request.path == calendar_url %}active{% endif %}">
                 <i class="bi bi-calendar me-2"></i> Calendar
               </a>
             </li>
             <li>
-              <a href="{% url 'profile' %}" class="nav-link {% if request.path == "/profile" %}active{% endif %}">
+              {% url 'profile' as profile_url %}
+              <a href="{{ profile_url }}" class="nav-link {% if request.path == profile_url %}active{% endif %}">
                 <i class="bi bi-person-circle me-2"></i> Profile
               </a>
             </li>

@@ -187,7 +187,7 @@ def create_or_get_item(media_type, kitsu_metadata, mapping_lookup, kitsu_mu_mapp
 
         external_id = mappings[site]
         if site == f"myanimelist/{media_type}":
-            media_id = external_id
+            media_id = int(external_id)
             season_number = None
             source = "mal"
             break
@@ -264,12 +264,12 @@ def convert_tvdb_to_tmdb(tvdb_id, source):
     data = app.providers.services.api_request("TMDB", "GET", url, params=params)
 
     if source == "thetvdb/season":
-        tmdb_id = data["tv_season_results"][0]["show_id"]
+        tmdb_id = int(data["tv_season_results"][0]["show_id"])
         media_type = "season"
         season_number = data["tv_season_results"][0]["season_number"]
         result = (tmdb_id, media_type, season_number)
     else:
-        tmdb_id = data["tv_results"][0]["id"]
+        tmdb_id = int(data["tv_results"][0]["id"])
         result = (tmdb_id, media_type, season_number)
 
     cache.set(cache_key, result)

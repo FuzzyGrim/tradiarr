@@ -312,6 +312,7 @@ def get_related(related_medias, media_id=None):
     return [
         {  # seasons from tv passes media_id
             "media_id": media_id if media_id else media["id"],
+            "source": "tmdb",
             "title": get_title(media),
             "image": get_image_url(media["poster_path"]),
             "season_number": (media.get("season_number", None)),
