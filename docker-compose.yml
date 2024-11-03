@@ -8,7 +8,6 @@ services:
     environment:
       - SECRET=longstring
       - REDIS_URL=redis://redis:6379
-      - ALLOWED_HOSTS=localhost
     volumes:
       - ./db:/yamtrack/db
     ports:
