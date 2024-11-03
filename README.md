@@ -53,7 +53,7 @@ Alternatively, if you need a PostgreSQL database, you can use the `docker-compos
 | SIMKL_SECRET    | String | Simkl API secret for importing media, a default secret is provided but you can get one at [Simkl Developer](https://simkl.com/settings/developer/new/custom-search/)        |
 | REDIS_URL       | String | Default to redis://localhost:6379, Redis is needed for processing background tasks, set this to your redis server url                                                       |
 | SECRET          | String | [Secret key](https://docs.djangoproject.com/en/stable/ref/settings/#secret-key) used for cryptographic signing, should be a random string                                   |
-| ALLOWED_HOSTS   | List   | Host/domain names that this Django site can serve: besides localhost, add your local IP if you want to access from another computer in the house, then add your public IP if you want to access from outside, and/or your domain name if you plan to use one                                                                                                                                                                                                  |
+| ALLOWED_HOSTS   | List   | Host/domain names that this Django site can serve: add your local IP if you want to access from another computer in the house, then add your public IP if you want to access from outside, and/or your domain name if you plan to use one                                                                                                                                                                                                                      |
 | CSRF            | List   | HTTPS domain names that this Django site can serve, set this to your domain name if exposing to the public via `https` (in this case include `https://` but no trailing `/`)|
 | REGISTRATION    | Bool   | Default to true, set to false to disable user registration                                                                                                                  |
 | DEBUG           | Bool   | Default to false, set to true for debugging                                                                                                                                 |
@@ -96,7 +96,6 @@ IGDB_ID=IGDB_ID
 IGDB_SECRET=IGDB_SECRET
 SECRET=SECRET
 DEBUG=True
-ALLOWED_HOSTS=localhost
 ```
 
 Then run the following commands.
