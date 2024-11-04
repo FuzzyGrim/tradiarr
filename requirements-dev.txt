@@ -1,5 +1,5 @@
 coverage==7.6.1
-djlint==1.35.2
+djlint==1.35.4
 pytest-playwright==0.5.2
 ruff==0.7.2
 
