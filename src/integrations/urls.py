@@ -18,4 +18,9 @@ urlpatterns = [
     path("import/kitsu/id", views.import_kitsu_id, name="import_kitsu_id"),
     path("import/yamtrack", views.import_yamtrack, name="import_yamtrack"),
     path("export/csv", views.export_csv, name="export_csv"),
+    path(
+        "webhook/jellyfin/<str:token>",
+        views.jellyfin_webhook,
+        name="jellyfin_webhook",
+    ),
 ]

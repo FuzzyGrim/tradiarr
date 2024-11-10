@@ -2,7 +2,7 @@ from django.contrib.auth.decorators import login_required
 from django.urls import resolve
 from django.utils.deprecation import MiddlewareMixin
 
-LOGIN_EXEMPT_ROUTES = ("login", "register")
+LOGIN_EXEMPT_ROUTES = ("login", "register", "jellyfin_webhook")
 
 class LoginRequiredMiddleware(MiddlewareMixin):
     """Middleware that requires a user to be authenticated to view any page.

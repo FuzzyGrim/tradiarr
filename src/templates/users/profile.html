@@ -16,35 +16,79 @@
     </fieldset>
   </form>
 
-  <div class="mb-3">
-    <label class="form-label" for="token-input">Token</label>
+  <form method="post" class="mb-4">
+    {% csrf_token %}
+    <fieldset class="form-group">
+      <legend class="border-bottom mb-4">Password Update</legend>
+      {% crispy password_form %}
+    </fieldset>
+  </form>
 
-    <div class="input-group">
-      <input type="text"
-             class="form-control"
-             id="token-input"
-             value="{{ request.user.token|default_if_none:"" }}"
-             readonly
-             role="button">
-      <button class="btn btn-secondary"
-              type="button"
-              id="copyButton"
-              data-bs-toggle="tooltip"
-              data-bs-placement="top"
-              title="Copy to clipboard">
-        <i class="bi bi-clipboard"></i>
-      </button>
-      <button class="btn btn-danger"
-              type="button"
-              data-bs-toggle="modal"
-              data-bs-target="#confirmModal">
-        <i class="bi bi-arrow-repeat"></i>
-      </button>
+  <div class="mb-4">
+    <legend class="border-bottom mb-4">Integrations</legend>
+
+    <div class="mb-3">
+      <label class="form-label" for="token-input">Token</label>
+      <div class="input-group">
+        <input type="text"
+               class="form-control"
+               id="token-input"
+               value="{{ request.user.token|default_if_none:"" }}"
+               readonly
+               role="button">
+
+        <button class="btn btn-secondary"
+                type="button"
+                id="copyButton"
+                data-bs-toggle="tooltip"
+                data-bs-placement="top"
+                title="Copy to clipboard">
+          <i class="bi bi-clipboard"></i>
+        </button>
+
+        <button class="btn btn-danger"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#confirmModal">
+          <i class="bi bi-arrow-repeat"></i>
+        </button>
+      </div>
     </div>
 
-    <div class="form-text">
-      For Jellyfin integration, use the URL: {{ request.get_host }}/webhook/jellyfin/&lttoken&gt
+    <div>
+      <label class="form-label">Jellyfin</label>
+
+      <div class="card">
+        <div class="card-body">
+          <ol>
+            <li>Generate a token above if you don't have one yet.</li>
+            <li>
+              Add this repository <a href="https://raw.githubusercontent.com/shemanaev/jellyfin-plugin-repo/master/manifest.json">link</a> to your "Plugins Catalog" in Jellyfin settings.
+            </li>
+            <li>
+              In Jellyfin settings, go to "My Plugins" and install the <a href="https://github.com/shemanaev/jellyfin-plugin-webhooks">Unofficial Webhooks plugin</a>.
+            </li>
+            <li>
+              In the Webhooks plugin settings:
+              <ul>
+                <li>
+                  URL:
+                  <a href="{{ request.scheme }}://{{ request.get_host }}/webhook/jellyfin/{{ request.user.token|default_if_none:"&lttoken&gt" }}">
+                    {{ request.scheme }}://{{ request.get_host }}/webhook/jellyfin/{{ request.user.token|default_if_none:"&lttoken&gt" }}
+                  </a>
+                </li>
+                <li>Payload format: Default</li>
+                <li>Listen to events only for: Your Jellyfin User</li>
+                <li>
+                  Events: <code>Stop</code> and <code>MarkPlayed</code>
+                </li>
+              </ul>
+            </li>
+          </ol>
+        </div>
+      </div>
     </div>
+
   </div>
 
   <!-- Modal -->
@@ -75,14 +119,6 @@
       </div>
     </div>
   </div>
-
-  <form method="post" class="mb-4">
-    {% csrf_token %}
-    <fieldset class="form-group">
-      <legend class="border-bottom mb-4">Password Update</legend>
-      {% crispy password_form %}
-    </fieldset>
-  </form>
 
   <div class="mb-4">
     <legend class="border-bottom mb-4">Import</legend>
