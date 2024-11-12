@@ -19,50 +19,54 @@ def process_payload(payload, user):
 
     if payload["Item"]["Type"] == "Episode":
         media_type = "tv"
-        media_id = int(payload["Series"]["ProviderIds"].get("Tmdb"))
+        tmdb_id = payload["Series"]["ProviderIds"].get("Tmdb")
     elif payload["Item"]["Type"] == "Movie":
         media_type = "movie"
-        media_id = int(payload["Item"]["ProviderIds"].get("Tmdb"))
+        tmdb_id = payload["Item"]["ProviderIds"].get("Tmdb")
     else:
         logger.info("Ignoring Jellyfin webhook event: %s", media_type)
         return
 
-    if media_id is None:
+    if tmdb_id is None:
         logger.info(
             "Ignoring Jellyfin webhook call because no TMDB ID was found.",
         )
         return
 
+    tmdb_id = int(tmdb_id)
     mapping_data = fetch_mapping_data()
 
     if media_type == "tv":
         season_number = payload["Item"]["ParentIndexNumber"]
         episode_number = payload["Item"]["IndexNumber"]
-        tvdb_id = int(payload["Series"]["ProviderIds"].get("Tvdb"))
+        tvdb_id = payload["Series"]["ProviderIds"].get("Tvdb")
         title = payload["Series"]["Name"]
 
-        mal_id, episode_offset = get_mal_id_from_tvdb(
-            mapping_data,
-            tvdb_id,
-            season_number,
-            episode_number,
-        )
-        if mal_id:
-            logger.info("Detected anime: %s", title)
-            add_anime(mal_id, episode_offset, payload, user)
-        else:
-            logger.info("Detected TV show: %s", title)
-            add_tv(media_id, payload, user)
+        if tvdb_id:
+            tvdb_id = int(tvdb_id)
+            mal_id, episode_offset = get_mal_id_from_tvdb(
+                mapping_data,
+                tvdb_id,
+                season_number,
+                episode_number,
+            )
+            if mal_id:
+                logger.info("Detected anime: %s", title)
+                add_anime(mal_id, episode_offset, payload, user)
+                return
+
+        logger.info("Detected TV show: %s", title)
+        add_tv(tmdb_id, payload, user)
 
     elif media_type == "movie":
         title = payload["Item"]["Name"]
-        mal_id = get_mal_id_from_tmdb_movie(mapping_data, media_id)
+        mal_id = get_mal_id_from_tmdb_movie(mapping_data, tmdb_id)
         if mal_id:
             logger.info("Detected anime movie: %s", title)
-            add_anime(mal_id, episode_offset, payload, user)
+            add_anime(mal_id, 1, payload, user)
         else:
             logger.info("Detected movie: %s", title)
-            add_movie(media_id, payload, user)
+            add_movie(tmdb_id, payload, user)
 
 
 def add_anime(media_id, episode_number, payload, user):
@@ -143,7 +147,7 @@ def add_movie(media_id, payload, user):
         movie_instance.save()
 
     except app.models.Movie.DoesNotExist:
-        app.models.Anime.objects.create(
+        app.models.Movie.objects.create(
             item=item,
             user=user,
             progress=progress,

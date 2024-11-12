@@ -3,7 +3,7 @@ import json
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from app.models import TV, Episode, Item, Movie, Season
+from app.models import TV, Anime, Episode, Item, Movie, Season
 from users.models import User
 
 
@@ -28,10 +28,13 @@ class JellyfinWebhookTests(TestCase):
             "Event": "MarkPlayed",
             "Item": {
                 "Type": "Episode",
-                "ProviderIds": {"Tmdb": "1668"},
                 "ParentIndexNumber": 1,
                 "IndexNumber": 1,
                 "UserData": {"Played": True},
+            },
+            "Series": {
+                "Name": "Friends",
+                "ProviderIds": {"Tmdb": "1668"},
             },
         }
 
@@ -51,13 +54,13 @@ class JellyfinWebhookTests(TestCase):
         self.assertEqual(tv.status, "In progress")
 
         season = Season.objects.get(
-            item__media_type="season",
+            item__media_id=1668,
             item__season_number=1,
         )
         self.assertEqual(season.status, "In progress")
 
         episode = Episode.objects.get(
-            item__media_type="episode",
+            item__media_id=1668,
             item__season_number=1,
             item__episode_number=1,
         )
@@ -68,6 +71,35 @@ class JellyfinWebhookTests(TestCase):
         payload = {
             "Event": "MarkPlayed",
             "Item": {
+                "Name": "The Matrix",
+                "Type": "Movie",
+                "ProviderIds": {"Tmdb": "603"},
+                "UserData": {"Played": True},
+            },
+        }
+
+        response = self.client.post(
+            self.url,
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        # Verify movie was created and marked as completed
+        movie = Movie.objects.get(
+            item__media_id="603",
+            user=self.user,
+        )
+        self.assertEqual(movie.status, "Completed")
+        self.assertEqual(movie.progress, 1)
+
+    def test_anime_movie_mark_played(self):
+        """Test webhook handles movie mark played event."""
+        payload = {
+            "Event": "MarkPlayed",
+            "Item": {
+                "Name": "Perfect Blue",
                 "Type": "Movie",
                 "ProviderIds": {"Tmdb": "10494"},
                 "UserData": {"Played": True},
@@ -83,9 +115,9 @@ class JellyfinWebhookTests(TestCase):
         self.assertEqual(response.status_code, 200)
 
         # Verify movie was created and marked as completed
-        movie = Movie.objects.get(
-            item__media_type="movie",
+        movie = Anime.objects.get(
             item__media_id="10494",
+            user=self.user,
         )
         self.assertEqual(movie.status, "Completed")
         self.assertEqual(movie.progress, 1)
@@ -129,3 +161,101 @@ class JellyfinWebhookTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(Movie.objects.count(), 0)
+
+    def test_anime_episode_mark_played(self):
+        """Test webhook handles anime episode mark played event."""
+        payload = {
+            "Event": "MarkPlayed",
+            "Item": {
+                "Type": "Episode",
+                "ParentIndexNumber": 1,
+                "IndexNumber": 1,
+                "UserData": {"Played": True},
+            },
+            "Series": {
+                "Name": "Frieren: Beyond Journey's End",
+                "ProviderIds": {
+                    "Tvdb": "424536",
+                    "Tmdb": "209867",
+                },
+            },
+        }
+
+        response = self.client.post(
+            self.url,
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+
+        # Verify anime was created and marked as in progress
+        anime = Anime.objects.get(
+            item__media_id="52991",
+            user=self.user,
+        )
+        self.assertEqual(anime.status, "In progress")
+        self.assertEqual(anime.progress, 1)
+
+    def test_mark_unplayed(self):
+        """Test webhook handles unplayed marks."""
+        # First mark as played
+        payload = {
+            "Event": "MarkPlayed",
+            "Item": {
+                "Name": "The Matrix",
+                "Type": "Movie",
+                "ProviderIds": {"Tmdb": "603"},
+                "UserData": {"Played": False},
+            },
+        }
+        self.client.post(
+            self.url,
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        # Then mark as unplayed
+        payload["Event"] = "MarkUnplayed"
+        payload["Item"]["UserData"]["Played"] = False
+        response = self.client.post(
+            self.url,
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        movie = Movie.objects.get(item__media_id="603")
+        self.assertEqual(movie.progress, 0)
+        self.assertEqual(movie.status, "In progress")
+
+    def test_repeated_watch(self):
+        """Test webhook handles repeated watches."""
+        payload = {
+            "Event": "MarkPlayed",
+            "Item": {
+                "Type": "Movie",
+                "Name": "The Matrix",
+                "ProviderIds": {"Tmdb": "603"},
+                "UserData": {"Played": True},
+            },
+        }
+
+        # First watch
+        self.client.post(
+            self.url,
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        # Second watch
+        response = self.client.post(
+            self.url,
+            data=json.dumps(payload),
+            content_type="application/json",
+        )
+
+        self.assertEqual(response.status_code, 200)
+        movie = Movie.objects.get(item__media_id="603")
+        self.assertEqual(movie.status, "Repeating")
+        self.assertEqual(movie.repeats, 1)
