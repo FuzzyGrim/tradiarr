@@ -12,10 +12,10 @@ from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-import app
 import users
 from integrations import exports, tasks
 from integrations.imports import simkl
+from integrations.webhooks import jellyfin
 
 logger = logging.getLogger(__name__)
 
@@ -149,124 +149,5 @@ def jellyfin_webhook(request, token):
         return HttpResponse(status=401)
 
     payload = json.loads(request.body)
-    event_type = payload["Event"]
-
-    if event_type not in ("Stop", "MarkPlayed"):
-        logger.info("Ignoring Jellyfin webhook event: %s", event_type)
-        return HttpResponse(status=200)
-
-    if payload["Item"]["Type"] == "Episode":
-        media_type = "tv"
-    elif payload["Item"]["Type"] == "Movie":
-        media_type = "movie"
-    else:
-        logger.info("Ignoring Jellyfin webhook event: %s", media_type)
-        return HttpResponse(status=200)
-
-    media_id = payload["Item"]["ProviderIds"].get("Tmdb")
-    if media_id is None:
-        series = payload.get("Series")
-        if series:
-            media_id = series.get("ProviderIds").get("Tmdb")
-
-    if media_id is None:
-        logger.info(
-            "Ignoring Jellyfin webhook call because no TMDB ID was found.",
-        )
-        return HttpResponse(status=200)
-
-    played = payload["Item"]["UserData"]["Played"]
-
-    if media_type == "tv":
-        tv_metadata = app.providers.tmdb.tv_with_seasons(
-            media_id,
-            [payload["Item"]["ParentIndexNumber"]],
-        )
-        season_metadata = tv_metadata[f"season/{payload['Item']['ParentIndexNumber']}"]
-
-        tv_item, _ = app.models.Item.objects.get_or_create(
-            media_id=media_id,
-            source="tmdb",
-            media_type="tv",
-            defaults={
-                "title": tv_metadata["title"],
-                "image": tv_metadata["image"],
-            },
-        )
-
-        tv_instance, _ = app.models.TV.objects.update_or_create(
-            item=tv_item,
-            user=user,
-            defaults={
-                "status": app.models.STATUS_IN_PROGRESS,
-            },
-        )
-
-        season_item, _ = app.models.Item.objects.get_or_create(
-            media_id=media_id,
-            source="tmdb",
-            media_type="season",
-            season_number=payload["Item"]["ParentIndexNumber"],
-            defaults={
-                "title": tv_metadata["title"],
-                "image": season_metadata["image"],
-            },
-        )
-
-        season_instance, _ = app.models.Season.objects.update_or_create(
-            item=season_item,
-            user=user,
-            related_tv=tv_instance,
-            defaults={
-                "status": app.models.STATUS_IN_PROGRESS,
-            },
-        )
-
-        episode_item, _ = app.models.Item.objects.get_or_create(
-            media_id=media_id,
-            source="tmdb",
-            media_type="episode",
-            season_number=payload["Item"]["ParentIndexNumber"],
-            episode_number=payload["Item"]["IndexNumber"],
-            defaults={
-                "title": tv_metadata["title"],
-                "image": season_metadata["image"],
-            },
-        )
-
-        if played:
-            app.models.Episode.objects.get_or_create(
-                item=episode_item,
-                related_season=season_instance,
-                defaults={
-                    "watch_date": datetime.now(tz=settings.TZ),
-                },
-            )
-
-    elif media_type == "movie":
-        media_metadata = app.providers.tmdb.movie(media_id)
-        image = media_metadata["image"]
-
-        # Get or create item
-        item, _ = app.models.Item.objects.get_or_create(
-            media_id=media_id,
-            source="tmdb",
-            media_type=media_type,
-            defaults={
-                "title": media_metadata["title"],
-                "image": image,
-            },
-        )
-
-        app.models.Movie.objects.update_or_create(
-            item=item,
-            user=user,
-            defaults={
-                "progress": 1 if played else 0,
-                "status": app.models.STATUS_COMPLETED
-                if played
-                else app.odels.STATUS_IN_PROGRESS,
-            },
-        )
-
+    jellyfin.process_payload(payload, user)
     return HttpResponse(status=200)
