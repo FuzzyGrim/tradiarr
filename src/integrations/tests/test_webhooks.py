@@ -1,10 +1,10 @@
 import json
 
+from django.contrib.auth import get_user_model
 from django.test import Client, TestCase
 from django.urls import reverse
 
 from app.models import TV, Anime, Episode, Item, Movie, Season
-from users.models import User
 
 
 class JellyfinWebhookTests(TestCase):
@@ -13,7 +13,8 @@ class JellyfinWebhookTests(TestCase):
     def setUp(self):
         """Set up test data."""
         self.client = Client()
-        self.user = User.objects.create(username="testuser", token="test-token")  # noqa: S106
+        self.credentials = {"username": "testuser", "token": "test-token"}
+        self.user = get_user_model().objects.create_superuser(**self.credentials)
         self.url = reverse("jellyfin_webhook", kwargs={"token": "test-token"})
 
     def test_invalid_token(self):
