@@ -25,103 +25,6 @@
   </form>
 
   <div class="mb-4">
-    <legend class="border-bottom mb-4">Integrations</legend>
-
-    <div class="mb-3">
-      <label class="form-label" for="token-input">Token</label>
-      <div class="input-group">
-        <input type="text"
-               class="form-control"
-               id="token-input"
-               value="{{ request.user.token|default_if_none:"" }}"
-               readonly
-               role="button">
-
-        <button class="btn btn-secondary"
-                type="button"
-                id="copyButton"
-                data-bs-toggle="tooltip"
-                data-bs-placement="top"
-                title="Copy to clipboard">
-          <i class="bi bi-clipboard"></i>
-        </button>
-
-        <button class="btn btn-danger"
-                type="button"
-                data-bs-toggle="modal"
-                data-bs-target="#confirmModal">
-          <i class="bi bi-arrow-repeat"></i>
-        </button>
-      </div>
-    </div>
-
-    <div>
-      <label class="form-label">Jellyfin</label>
-
-      <div class="card">
-        <div class="card-body">
-          <ol>
-            <li>You will need to have TMDB and TVDB as metadata providers in Jellyfin.</li>
-            <li>Generate a token above if you don't have one yet.</li>
-            <li>
-              Add this repository <a href="https://raw.githubusercontent.com/shemanaev/jellyfin-plugin-repo/master/manifest.json">link</a> to your "Plugins Catalog" in Jellyfin settings.
-            </li>
-            <li>
-              In Jellyfin settings, go to "My Plugins" and install the <a href="https://github.com/shemanaev/jellyfin-plugin-webhooks">Unofficial Webhooks plugin</a>.
-            </li>
-            <li>
-              In the Webhooks plugin settings:
-              <ul>
-                <li>
-                  URL:
-                  <a href="{{ request.scheme }}://{{ request.get_host }}/webhook/jellyfin/{{ request.user.token|default_if_none:"&lttoken&gt" }}">
-                    {{ request.scheme }}://{{ request.get_host }}/webhook/jellyfin/{{ request.user.token|default_if_none:"&lttoken&gt" }}
-                  </a>
-                </li>
-                <li>Payload format: Default</li>
-                <li>Listen to events only for: Your Jellyfin User</li>
-                <li>
-                  Events: <code>Stop</code>, <code>MarkPlayed</code> and <code>MarkUnplayed</code>
-                </li>
-              </ul>
-            </li>
-          </ol>
-        </div>
-      </div>
-    </div>
-
-  </div>
-
-  <!-- Modal -->
-  <div class="modal fade"
-       id="confirmModal"
-       tabindex="-1"
-       aria-labelledby="confirmModalLabel"
-       aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title" id="confirmModalLabel">Regenerate Token?</h5>
-          <button type="button"
-                  class="btn-close"
-                  data-bs-dismiss="modal"
-                  aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          This action will invalidate your current token. All applications using this token will need to be updated.
-        </div>
-        <div class="modal-footer d-flex justify-content-between">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <form method="post" action="{% url 'regenerate_token' %}">
-            {% csrf_token %}
-            <button type="submit" class="btn btn-primary">Continue</button>
-          </form>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <div class="mb-4">
     <legend class="border-bottom mb-4">Import</legend>
 
     <fieldset class="input-group profile-grid">
@@ -278,12 +181,10 @@
 
 {% block js %}
   <script src="{% static 'js/spinner.js' %}"></script>
-  <script src="{% static 'js/copy-token.js' %}"></script>
 
   {% comment %} Enable bootstrap tooltips {% endcomment %}
   <script>
     const tooltipTriggerList = document.querySelectorAll('[data-bs-toggle="tooltip"]')
     const tooltipList = [...tooltipTriggerList].map(tooltipTriggerEl => new bootstrap.Tooltip(tooltipTriggerEl))
   </script>
-
 {% endblock js %}

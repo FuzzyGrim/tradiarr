@@ -1,13 +1,11 @@
 import json
 import logging
-import secrets
 
 from django.contrib import messages
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.views import LoginView
-from django.db import IntegrityError
 from django.shortcuts import redirect, render
-from django.views.decorators.http import require_GET, require_http_methods, require_POST
+from django.views.decorators.http import require_GET, require_http_methods
 from django_celery_results.models import TaskResult
 
 from users import services
@@ -112,19 +110,6 @@ def profile(request):
     }
 
     return render(request, "users/profile.html", context)
-
-
-@require_POST
-def regenerate_token(request):
-    """Regenerate the token for the user."""
-    while True:
-        try:
-            request.user.token = secrets.token_urlsafe(32)
-            request.user.save(update_fields=["token"])
-            break
-        except IntegrityError:
-            continue
-    return redirect("profile")
 
 
 @require_GET

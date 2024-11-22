@@ -1,21 +1,16 @@
 """Contains views for importing and exporting media data from various sources."""
 
-import json
 import logging
 from datetime import datetime
 
 from django.conf import settings
 from django.contrib import messages
-from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse
 from django.shortcuts import redirect
-from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
-import users
 from integrations import exports, tasks
 from integrations.imports import simkl
-from integrations.webhooks import jellyfin
 
 logger = logging.getLogger(__name__)
 
@@ -133,21 +128,3 @@ def export_csv(request):
     logger.info("User %s successfully exported their data", request.user.username)
 
     return response
-
-
-@csrf_exempt
-@require_POST
-def jellyfin_webhook(request, token):
-    """Handle Jellyfin webhook notifications for media playback."""
-    try:
-        user = users.models.User.objects.get(token=token)
-    except ObjectDoesNotExist:
-        logger.warning(
-            "Could not process Jellyfin webhook: Invalid token: %s",
-            token,
-        )
-        return HttpResponse(status=401)
-
-    payload = json.loads(request.body)
-    jellyfin.process_payload(payload, user)
-    return HttpResponse(status=200)
