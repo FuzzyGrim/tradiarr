@@ -453,3 +453,17 @@ def history_delete(request):
         logger.warning("User does not have permission to delete this history record.")
 
     return helpers.redirect_back(request)
+
+
+@require_GET
+def statistics(request):
+    """Return the statistics page."""
+    calendar_weeks, month_data = database.get_activity_data(request.user.id)
+
+    context = {
+        "calendar_weeks": calendar_weeks,
+        "weekdays": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+        "month_data": month_data,  # List of tuples (month_name, week_count)
+    }
+
+    return render(request, "app/statistics.html", context)

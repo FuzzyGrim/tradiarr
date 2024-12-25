@@ -490,3 +490,55 @@ debug, info, success, warning, error */
   --bs-btn-active-border-color: #51585e;
   --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
 }
+
+.date-range-stats {
+  width: 40%;
+
+  @media screen and (width <= 1199px) {
+    width: 50%;
+  }
+
+  @media screen and (width <= 767px) {
+    width: 100%;
+  }
+}
+
+.contribution-graph {
+  --square-size: 15px;
+  --gap-size: .25rem;
+}
+
+.weekday-label {
+  height: var(--square-size);
+  line-height: var(--square-size);
+}
+
+.day {
+  width: var(--square-size);
+  height: var(--square-size);
+  border-radius: 2px;
+  position: relative;
+}
+
+.day[data-level="0"] {
+  background-color: #31363a;
+}
+.day[data-level="1"] {
+  background-color: #9be9a8;
+}
+.day[data-level="2"] {
+  background-color: #40c463;
+}
+.day[data-level="3"] {
+  background-color: #30a14e;
+}
+.day[data-level="4"] {
+  background-color: #216e39;
+}
+
+.months {
+  padding-left: 43px;
+}
+.month {
+  text-align: left;
+}
