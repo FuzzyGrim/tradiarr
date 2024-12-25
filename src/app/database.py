@@ -138,10 +138,20 @@ def get_filtered_historical_data(start_date, end_date, user_id):
 def get_activity_data(user_id):
     """Get daily activity counts for the last year."""
     end_date = timezone.now().date()
-    start_date = end_date - timedelta(days=367)
+    start_date = end_date - timedelta(days=365)
 
-    # Align start date to the beginning of the week
+    # First align to Monday
     start_date = start_date - timedelta(days=start_date.weekday())
+
+    # Check if it's too close to the end of the month
+    next_month = (start_date.replace(day=1) + timedelta(days=32)).replace(day=1)
+    days_until_next_month = (next_month - start_date).days
+
+    # If less than 2 weeks until next month, move back to previous Monday
+    # it's so there is enough space for month labels
+    two_weeks = 14
+    if days_until_next_month < two_weeks:
+        start_date = start_date - timedelta(days=7)
 
     combined_data = get_filtered_historical_data(start_date, end_date, user_id)
 
