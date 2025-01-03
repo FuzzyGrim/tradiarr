@@ -11,7 +11,7 @@ django-select2==8.2.3
 django-simple-history==3.7.0
 fakeredis==2.26.2
 gunicorn==23.0.0
-Pillow==11.0.0
+Pillow==11.1.0
 psycopg[binary]==3.2.3
 python-decouple==3.8
 redis[hiredis]==5.2.1
