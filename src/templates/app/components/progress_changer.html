@@ -14,11 +14,7 @@
   {% if media_type == "game" %}
     {{ media.progress|format_time }}
   {% elif media_type == "season" %}
-    {% if media.current_episode %}
-      Ep. {{ media.current_episode.item.episode_number }}
-    {% else %}
-      Ep. 0
-    {% endif %}
+    Ep. {{ media.current_episode_number }}
   {% elif media_type == "manga" %}
     Ch. {{ media.progress }}
   {% else %}

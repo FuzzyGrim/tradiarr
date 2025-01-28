@@ -23,17 +23,25 @@
           <!-- Predefined Ranges -->
           <div class="col-md-4">
             <label class="form-label">Predefined Ranges</label>
-            <select class="form-select" id="predefined-range">
-              <option value="">Custom Range</option>
-              <option value="today">Today</option>
-              <option value="yesterday">Yesterday</option>
-              <option value="thisWeek">This Week</option>
-              <option value="lastWeek">Last Week</option>
-              <option value="thisMonth">This Month</option>
-              <option value="lastMonth">Last Month</option>
-              <option value="thisYear">This Year</option>
-              <option value="lastYear">Last Year</option>
-              <option value="allTime">All Time</option>
+            <select class="form-select" id="predefined-range" name="range">
+              <option value="today" {% if range == "today" %}selected{% endif %}>Today</option>
+              <option value="yesterday" {% if range == "yesterday" %}selected{% endif %}>Yesterday</option>
+              <hr>
+              <option value="thisWeek" {% if range == "thisWeek" %}selected{% endif %}>This week</option>
+              <option value="last7Days" {% if range == "last7Days" %}selected{% endif %}>Last 7 days</option>
+              <hr>
+              <option value="thisMonth" {% if range == "thisMonth" %}selected{% endif %}>This month</option>
+              <option value="last30Days" {% if range == "last30Days" %}selected{% endif %}>Last 30 days</option>
+              <option value="last90Days" {% if range == "last90Days" %}selected{% endif %}>Last 90 days</option>
+              <hr>
+              <option value="thisYear" {% if range == "thisYear" %}selected{% endif %}>This year</option>
+              <option value="last6Months"
+                      {% if range == "last6Months" %}selected{% endif %}>Last 6 months</option>
+              <option value="last12Months"
+                      {% if range == "last12Months" %}selected{% endif %}>Last 12 months</option>
+              <hr>
+              <option value="allTime" {% if range == "allTime" %}selected{% endif %}>All time</option>
+              <option value="custom" {% if range == "custom" %}selected{% endif %}>Custom range</option>
             </select>
           </div>
           <!-- Custom Date Range -->
@@ -62,54 +70,6 @@
             <button class="btn btn-primary" type="submit">Apply Range</button>
           </div>
         </form>
-      </div>
-    </div>
-
-    <!-- Activity History Section -->
-    <div class="card bg-foreground mb-5">
-      <div class="card-body">
-        <h5 class="card-title mb-4 text-center">Activity History</h5>
-        <div class="d-flex w-100 overflow-x-scroll overflow-y-hidden">
-          <div class="contribution-graph">
-            <!-- Months row -->
-            <div class="d-flex mb-1 months gap-1">
-              {% for month, week_count in activity_data.months %}
-                <div class="month small text-secondary"
-                     style="width: calc(({{ week_count }} * var(--square-size)) + (({{ week_count }} - 1) * var(--gap-size)))">
-                  {{ month }}
-                </div>
-              {% endfor %}
-            </div>
-
-            <!-- Graph wrapper -->
-            <div class="d-flex gap-1">
-              <!-- Weekday labels -->
-              <div class="d-flex flex-column gap-1 pe-2">
-                {% for weekday in activity_data.weekdays %}
-                  {% if forloop.counter0|divisibleby:2 %}
-                    <div class="weekday-label small text-secondary">{{ weekday }}</div>
-                  {% else %}
-                    <div class="weekday-label"></div>
-                  {% endif %}
-                {% endfor %}
-              </div>
-
-              <!-- Weeks grid -->
-              <div class="d-flex gap-1">
-                {% for week in activity_data.calendar_weeks %}
-                  <div class="d-flex flex-column gap-1">
-                    {% for day in week %}
-                      <div class="day {% if day.disabled %}opacity-25{% endif %}"
-                           data-level="{{ day.level }}"
-                           {% if not day.disabled %} data-bs-toggle="tooltip" data-bs-title="{{ day.count }} action{{ day.count|pluralize }} on {{ day.date }}"{% endif %}>
-                      </div>
-                    {% endfor %}
-                  </div>
-                {% endfor %}
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
 
@@ -167,6 +127,61 @@
       </div>
     </div>
 
+    <!-- Activity History Section -->
+    <div class="card bg-foreground mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-4 text-center">Activity on Yamtrack</h5>
+        <div class="d-flex w-100 overflow-x-scroll overflow-y-hidden activity-stats justify-content-center">
+          <div class="contribution-graph">
+            <!-- Months row -->
+            <div class="d-flex mb-1 months gap-1">
+              {% for month, week_count in activity_data.months %}
+                <div class="month small text-secondary"
+                     style="width: calc(({{ week_count }} * var(--square-size)) + (({{ week_count }} - 1) * var(--gap-size)))">
+                  {{ month }}
+                </div>
+              {% endfor %}
+            </div>
+
+            <!-- Graph wrapper -->
+            <div class="d-flex gap-1">
+              <!-- Weekday labels -->
+              <div class="d-flex flex-column gap-1 pe-2">
+                {% for weekday in activity_data.weekdays %}
+                  {% if forloop.counter0|divisibleby:2 %}
+                    <div class="weekday-label small text-secondary">{{ weekday }}</div>
+                  {% else %}
+                    <div class="weekday-label"></div>
+                  {% endif %}
+                {% endfor %}
+              </div>
+
+              <!-- Weeks grid -->
+              <div class="d-flex gap-1">
+                {% for week in activity_data.calendar_weeks %}
+                  <div class="d-flex flex-column gap-1">
+                    {% for day in week %}
+                      <div class="day {% if day.disabled %}opacity-25{% endif %}"
+                           data-level="{{ day.level }}"
+                           {% if day.count > 0 and not day.disabled %} data-bs-toggle="tooltip" data-bs-title="{{ day.count }} action{{ day.count|pluralize }} on {{ day.date }}"{% endif %}>
+                      </div>
+                    {% endfor %}
+                  </div>
+                {% endfor %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card bg-foreground mb-4">
+      <div class="card-body">
+        <h5 class="card-title mb-3 text-center">Media Timeline</h5>
+        <div id="timeline"></div>
+      </div>
+    </div>
+
     <div class="row g-4 mb-4">
       <div class="col-lg-6">
         <div class="card bg-foreground h-100">
@@ -175,15 +190,14 @@
 
             {% for media_type, count in media_count.items %}
               {% if media_type != "total" %}
-                {% widthratio count media_count.total 100 as ratio %}
                 <div class="mb-4">
                   <div class="d-flex justify-content-between mb-1">
                     <span>{{ media_type|media_type_readable }}</span>
-                    <span>{{ count }} ({{ ratio }}%)</span>
+                    <span>{{ count }} ({{ count|percentage_ratio:media_count.total }}%)</span>
                   </div>
                   <div class="progress" role="progressbar">
                     <div class="progress-bar"
-                         style="width: {{ ratio }}%;
+                         style="width: {{ count|percentage_ratio:media_count.total }}%;
                                 background-color: {{ media_type|media_color }}"></div>
                   </div>
                 </div>
@@ -199,15 +213,14 @@
             <h5 class="card-title mb-4">Status Distribution</h5>
 
             {% for status in status_distribution.datasets %}
-              {% widthratio status.total media_count.total 100 as ratio %}
               <div class="mb-4">
                 <div class="d-flex justify-content-between mb-1">
                   <span>{{ status.label }}</span>
-                  <span>{{ status.total }} ({{ ratio }}%)</span>
+                  <span>{{ status.total }} ({{ status.total|percentage_ratio:media_count.total }}%)</span>
                 </div>
                 <div class="progress" role="progressbar">
                   <div class="progress-bar"
-                       style="width: {{ ratio }}%;
+                       style="width: {{ status.total|percentage_ratio:media_count.total }}%;
                               background-color: {{ status.background_color }}"></div>
                 </div>
               </div>
@@ -236,19 +249,23 @@
     </div>
 
     {% if score_distribution.top_rated %}
-      <div class="card bg-foreground mb-5">
+      <div class="card bg-foreground mb-4">
         <div class="card-body">
-          <h5 class="card-title mb-3 text-center">Highest Rated Items</h5>
+          <h5 class="card-title mb-3 text-center">Highest Rated Media</h5>
           <div class="row g-2">
             {% for media in score_distribution.top_rated %}
               <div class="col-2">
                 <div class="card media-card">
-                  <img src="{{ media.image }}"
-                       class="card-img {% if media.image == IMG_NONE %}image-not-found{% else %}poster{% endif %}"
-                       alt="{{ media.title }}" />
+                  <a href="{{ media.url }}">
+                    <img src="{{ IMG_NONE }}"
+                         data-src="{{ media.image }}"
+                         class="card-img lazyload {% if media.image == IMG_NONE %}image-not-found{% else %}poster{% endif %}"
+                         alt="{{ media.title }}" />
+                  </a>
 
                   <div class="card-img-overlay">
-                    <div class="card-title">{{ media.score }}</div>
+                    <div class="card-title">{{ media.title }}</div>
+                    <div class="text-center">{{ media.score }}</div>
                   </div>
                 </div>
               </div>
@@ -316,22 +333,16 @@
     });
   </script>
   <script>
-    function updateJustification(containerSelector = '.overflow-x-scroll') {
+    function updateJustification(containerSelector = '.activity-stats') {
       const container = document.querySelector(containerSelector);
-      if (!container) {
-          console.warn('Container not found');
-          return;
-      }
-  
+
       // Check if content is wider than container
       const hasOverflow = container.scrollWidth > container.clientWidth;
   
       if (hasOverflow) {
-        console.log('Overflow detected');
           container.classList.remove('justify-content-center');
           container.classList.add('justify-content-start');
       } else {
-        console.log('No overflow');
           container.classList.remove('justify-content-start');
           container.classList.add('justify-content-center');
       }
@@ -346,5 +357,88 @@
   window.addEventListener('resize', () => {
       updateJustification();
   });
+  </script>
+
+  <script src="https://cdn.jsdelivr.net/npm/svelte-gantt@4.4.2/index.iife.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/momentjs/latest/moment.min.js"></script>
+  {{ timeline|json_script:"timeline-data" }}
+  <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      const timeline = JSON.parse(document.getElementById('timeline-data').textContent);
+
+      // Create dynamic styles for media types
+      const styleSheet = document.createElement('style');
+      document.head.appendChild(styleSheet);
+
+      // Add styles for each task based on their background color
+      timeline.tasks.forEach(task => {
+          if (task.style && task.style.background) {
+              const className = `task-${task.id}`;
+              styleSheet.sheet.insertRule(
+                  `.${className} { background-color: ${task.style.background} !important; }`,
+                  styleSheet.sheet.cssRules.length
+              );
+              // Add the class to the task
+              task.classes = className;
+          }
+      });
+
+      const tasks = timeline.tasks.map(task => ({
+        ...task,
+        from: new Date(task.from),
+        to: new Date(task.to)
+      }));
+
+      // Calculate min and max dates with fallback to context variables with 1 day offset
+      const minDate = tasks.length > 0 
+        ? new Date(Math.min(...tasks.map(t => t.from)))
+        : new Date('{{ start_date }}');
+
+      const maxDate = tasks.length > 0 
+        ? new Date(Math.max(...tasks.map(t => t.to)))
+        : new Date(new Date('{{ end_date }}').setDate(new Date('{{ end_date }}').getDate() + 1));
+
+        // Calculate days between dates and multiply by number of px
+      const minWidth = Math.ceil((maxDate - minDate) / (1000 * 60 * 60 * 24)) * 85;
+  
+      const gantt = new SvelteGantt({
+          target: document.getElementById('timeline'),
+          props: {
+            rows: timeline.rows,
+            tasks: tasks,
+            from: minDate,
+            to: maxDate,
+            fitWidth: true,
+            dateAdapter: new MomentSvelteGanttDateAdapter(moment),
+            headers: [
+            { unit: 'day', format: 'MMM D, YYYY' },
+            ],
+            minWidth: minWidth,
+            columnUnit: 'day',
+            columnOffset: 1,
+            layout: 'expand',     
+          }
+      });
+
+      // Get all task elements and adjust their position and width
+      const taskElements = document.querySelectorAll('.sg-task');
+      taskElements.forEach(task => {
+          // Get current values
+          const currentTop = parseInt(task.style.top);
+          const currentWidth = parseInt(task.style.width);
+          const currentLeft = parseInt(task.style.left);
+
+          // Calculate new values
+          const multiplier = Math.floor(currentTop / 40);
+          const newTop = currentTop + (2 * multiplier);
+          const newWidth = currentWidth - 4;
+          const newLeft = currentLeft + 2;
+
+          // Apply new values
+          task.style.top = `${newTop}px`;
+          task.style.width = `${newWidth}px`;
+          task.style.left = `${newLeft}px`;
+      });
+    });
   </script>
 {% endblock js %}

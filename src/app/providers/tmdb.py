@@ -196,6 +196,7 @@ def process_season(response):
             "first_air_date": get_start_date(response["air_date"]),
             "last_air_date": get_end_date(response),
             "episodes": num_episodes,
+            "runtime": average_season_runtime(response),
             "total_runtime": total_season_runtime(response),
         },
         "episodes": response["episodes"],
@@ -256,18 +257,6 @@ def get_end_date(response):
     return None
 
 
-def total_season_runtime(response):
-    """Return the total runtime for the season."""
-    # when unknown runtime, value from response is null
-    return get_readable_duration(
-        sum(
-            episode["runtime"]
-            for episode in response["episodes"]
-            if episode["runtime"] is not None
-        ),
-    )
-
-
 def get_synopsis(text):
     """Return the synopsis for the media."""
     # when unknown synopsis, value from response is empty string
@@ -275,6 +264,16 @@ def get_synopsis(text):
     if text == "":
         return "No synopsis available."
     return text
+
+
+def get_readable_duration(duration):
+    """Convert duration in minutes to a readable format."""
+    # if unknown movie runtime, value from response is 0
+    # e.g movie: 274613
+    if duration:
+        hours, minutes = divmod(int(duration), 60)
+        return f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
+    return None
 
 
 def get_runtime_tv(runtime):
@@ -286,14 +285,32 @@ def get_runtime_tv(runtime):
     return None
 
 
-def get_readable_duration(duration):
-    """Convert duration in minutes to a readable format."""
-    # if unknown movie runtime, value from response is 0
-    # e.g movie: 274613
-    if duration:
-        hours, minutes = divmod(int(duration), 60)
-        return f"{hours}h {minutes}m" if hours > 0 else f"{minutes}m"
-    return None
+def average_season_runtime(response):
+    """Return the average runtime for the season."""
+    # when unknown runtime, value from response is null
+    episodes_with_runtime = [
+        episode for episode in response["episodes"] if episode["runtime"] is not None
+    ]
+
+    if not episodes_with_runtime:
+        return None
+
+    return get_readable_duration(
+        sum(episode["runtime"] for episode in episodes_with_runtime)
+        / len(episodes_with_runtime),
+    )
+
+
+def total_season_runtime(response):
+    """Return the total runtime for the season."""
+    # when unknown runtime, value from response is null
+    return get_readable_duration(
+        sum(
+            episode["runtime"]
+            for episode in response["episodes"]
+            if episode["runtime"] is not None
+        ),
+    )
 
 
 def get_genres(genres):

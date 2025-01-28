@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django import template
 from unidecode import unidecode
 
@@ -72,3 +74,22 @@ def media_type_readable(media_type):
 def media_color(media_type):
     """Return the color associated with the media type."""
     return models.Item.Colors[media_type.upper()].value
+
+
+@register.filter
+def percentage_ratio(value, total):
+    """Calculate percentage, showing one decimal place for values between 0 and 1."""
+    try:
+        if total == 0:
+            return "0"
+
+        result = (Decimal(value) / Decimal(total)) * 100
+
+        # If result is between 0 and 1, show one decimal
+        if 0 < result < 1:
+            return f"{result:.1f}"
+
+        # For all other values, show as integer
+        return str(int(round(result)))
+    except (TypeError, ValueError):
+        return "0"

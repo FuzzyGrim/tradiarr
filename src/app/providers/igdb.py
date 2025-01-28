@@ -37,8 +37,8 @@ def search(query):
             "fields name,cover.image_id;"
             "sort rating desc;"
             "limit 25;"
-            f'where name ~ *"{query}"* & category = (0,2,4,8,9,10)'
-        )  # main, expansion, standalone expansion, remakes, remasters, expanded games
+            f'where name ~ *"{query}"* & category = (0,2,3,4,8,9,10)'
+        )
 
         # exclude adult games depending on the settings
         if not settings.IGDB_NSFW:

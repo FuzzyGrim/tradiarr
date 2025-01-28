@@ -465,7 +465,11 @@ def statistics(request):
     one_year_ago = today.replace(year=today.year - 1)
 
     start_date_str = request.GET.get("start-date", one_year_ago.strftime(timeformat))
+    if start_date_str == "":
+        start_date_str = one_year_ago.strftime(timeformat)
     end_date_str = request.GET.get("end-date", today.strftime(timeformat))
+    if end_date_str == "":
+        end_date_str = today.strftime(timeformat)
 
     # Convert strings directly to datetime.date objects
     start_date = timezone.datetime.strptime(start_date_str, timeformat).date()
@@ -485,14 +489,16 @@ def statistics(request):
 
     score_distribution = BasicMedia.objects.get_score_distribution(user_media)
     status_distribution = BasicMedia.objects.get_status_distribution(user_media)
-
+    timeline = BasicMedia.objects.get_timeline(user_media)
     context = {
         "start_date": start_date,
         "end_date": end_date,
+        "range": request.GET.get("range", "last12Months"),
         "media_count": media_count,
         "activity_data": activity_data,
         "score_distribution": score_distribution,
         "status_distribution": status_distribution,
+        "timeline": timeline,
     }
 
     return render(request, "app/statistics.html", context)

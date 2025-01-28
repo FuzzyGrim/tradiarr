@@ -10,7 +10,7 @@ from django.core.validators import (
     MinValueValidator,
 )
 from django.db import models
-from django.db.models import CheckConstraint, Max, Q, Sum, UniqueConstraint
+from django.db.models import CheckConstraint, Max, Prefetch, Q, Sum, UniqueConstraint
 from django.urls import reverse
 from django.utils import timezone
 from model_utils import FieldTracker
@@ -57,7 +57,7 @@ class Item(models.Model):
         EPISODE = "#6610f2", "Indigo"
         MOVIE = "#fd7e14", "Orange"
         ANIME = "#0d6efd", "Blue"
-        MANGA = "#dc3545", "Red"
+        MANGA = "#b02a37", "Red"
         GAME = "#ffc107", "Yellow"
         BOOK = "#d63384", "Pink"
 
@@ -192,56 +192,70 @@ class MediaManager(models.Manager):
     """Custom manager for media models."""
 
     def get_user_media(self, user, start_date, end_date):
-        """Get all media items and their counts for a user within the date range."""
+        """Get all media items and their counts for a user within date range."""
         media_models = [
             model for model in user.get_active_media_types() if model != Episode
         ]
-
         user_media = {}
         media_count = {"total": 0}
 
+        # Cache the base episodes query
+        base_episodes = None
+        if TV in media_models or Season in media_models:
+            base_episodes = Episode.objects.filter(
+                related_season__user=user,
+                end_date__range=(start_date, end_date),
+            )
+
         for model in media_models:
             model_name = model.__name__.lower()
+            queryset = None
 
             if model in (TV, Season):
-                queryset = (
-                    model.objects.filter(user=user)
-                    .select_related("item")
-                    .prefetch_related(
-                        "seasons__episodes" if model == TV else "episodes",
+                if model == TV:
+                    tv_ids = base_episodes.values_list(
+                        "related_season__related_tv",
+                        flat=True,
+                    ).distinct()
+                    queryset = TV.objects.filter(id__in=tv_ids).prefetch_related(
+                        Prefetch(
+                            "seasons",
+                            queryset=Season.objects.select_related(
+                                "item",
+                            ).prefetch_related(
+                                Prefetch(
+                                    "episodes",
+                                    queryset=base_episodes.filter(
+                                        related_season__related_tv__in=tv_ids,
+                                    ),
+                                ),
+                            ),
+                        ),
                     )
-                )
-                # Filter out TV shows and seasons that are not within the date range
-                matching_ids = [
-                    media.id
-                    for media in queryset
-                    if start_date
-                    and end_date
-                    and start_date <= media.start_date
-                    and media.end_date <= end_date
-                ]
-                filtered_queryset = queryset.filter(id__in=matching_ids)
-                user_media[model_name] = filtered_queryset
-                count = filtered_queryset.count()
+                else:
+                    season_ids = base_episodes.values_list(
+                        "related_season",
+                        flat=True,
+                    ).distinct()
+                    queryset = Season.objects.filter(
+                        id__in=season_ids,
+                    ).prefetch_related(
+                        Prefetch("episodes", queryset=base_episodes),
+                    )
             else:
-                filtered_queryset = model.objects.filter(
+                queryset = model.objects.filter(
                     user=user,
                     start_date__gte=start_date,
                     end_date__lte=end_date,
-                ).select_related("item")
-                user_media[model_name] = filtered_queryset
-                count = filtered_queryset.count()
+                )
 
+            queryset = queryset.select_related("item")
+            user_media[model_name] = queryset
+            count = queryset.count()
             media_count[model_name] = count
             media_count["total"] += count
 
-        logging.info(
-            "%s - Retrieved media for date range %s to %s",
-            user,
-            start_date,
-            end_date,
-        )
-
+        logging.info("%s - Retrieved media from %s to %s", user, start_date, end_date)
         return user_media, media_count
 
     def get_score_distribution(self, user_media):
@@ -272,6 +286,7 @@ class MediaManager(models.Manager):
                     "title": media.item.title,
                     "image": media.item.image,
                     "score": media.score,
+                    "url": media.item.url,
                 }
 
                 # Use negative score for max heap (heapq implements min heap)
@@ -361,27 +376,80 @@ class MediaManager(models.Manager):
     def get_media_color(self, media_type):
         """Get the color for the media type."""
         colors = {
-            "tv": "rgba(75, 192, 192, 0.8)",
-            "season": "rgba(153, 102, 255, 0.8)",
-            "movie": "rgba(255, 159, 64, 0.8)",
-            "anime": "rgba(54, 162, 235, 0.8)",
-            "manga": "rgba(255, 99, 132, 0.8)",
-            "game": "rgba(255, 206, 86, 0.8)",
-            "book": "rgba(255, 182, 193, 0.8)",
+            "tv": "rgba(75, 192, 192)",
+            "season": "rgba(153, 102, 255)",
+            "movie": "rgba(255, 159, 64)",
+            "anime": "rgba(54, 162, 235)",
+            "manga": "rgba(255, 99, 132)",
+            "game": "rgba(255, 206, 86)",
+            "book": "rgba(255, 182, 193)",
         }
-        return colors.get(media_type, "rgba(201, 203, 207, 0.8)")
+        return colors.get(media_type, "rgba(201, 203, 207)")
 
     def get_status_color(self, status):
         """Get the color for the status of the media."""
         colors = {
-            Media.Status.IN_PROGRESS.value: "rgba(54, 162, 235, 0.8)",
-            Media.Status.COMPLETED.value: "rgba(75, 192, 192, 0.8)",
-            Media.Status.REPEATING.value: "rgba(153, 102, 255, 0.8)",
-            Media.Status.PLANNING.value: "rgba(255, 206, 86, 0.8)",
-            Media.Status.PAUSED.value: "rgba(255, 159, 64, 0.8)",
-            Media.Status.DROPPED.value: "rgba(255, 99, 132, 0.8)",
+            Media.Status.IN_PROGRESS.value: "rgba(54, 162, 235)",
+            Media.Status.COMPLETED.value: "rgba(75, 192, 192)",
+            Media.Status.REPEATING.value: "rgba(153, 102, 255)",
+            Media.Status.PLANNING.value: "rgba(255, 206, 86)",
+            Media.Status.PAUSED.value: "rgba(255, 159, 64)",
+            Media.Status.DROPPED.value: "rgba(255, 99, 132)",
         }
-        return colors.get(status, "rgba(201, 203, 207, 0.8)")
+        return colors.get(status, "rgba(201, 203, 207)")
+
+    def get_timeline(self, user_media):
+        """Get calendar data formatted for Gantt chart with optimized row layout."""
+        tasks = []
+        rows = [
+            {
+                "id": "row",
+                "label": "Media",
+                "enableDragging": False,
+                "enableResize": False,
+            },
+        ]
+        counter = itertools.count()
+        for model_name, media_list in user_media.items():
+            if model_name == "tv":
+                continue
+            for media in media_list:
+                # use datetime to align columns in Gantt chart
+                start_datetime = timezone.datetime.combine(
+                    media.start_date,
+                    timezone.datetime.min.time(),
+                )
+                end_datetime = timezone.datetime.combine(
+                    media.end_date,
+                    timezone.datetime.min.time(),
+                ) + timezone.timedelta(days=1)
+
+                tasks.extend(
+                    [
+                        {
+                            "id": next(counter),
+                            "resourceId": "row",
+                            "label": media.item.__str__(),
+                            "from": start_datetime.isoformat(),
+                            "to": end_datetime.isoformat(),
+                            "draggable": False,
+                            "resizable": False,
+                            "classes": model_name,
+                            "html": (
+                                f"<div class='text-truncate'>"
+                                f"{media.item.__str__()}"
+                                f"</div>"
+                            ),
+                            "style": {
+                                "background": self.get_media_color(model_name),
+                            },
+                        },
+                    ],
+                )
+        return {
+            "rows": rows,
+            "tasks": tasks,
+        }
 
 
 class Media(models.Model):
@@ -701,8 +769,8 @@ class Season(Media):
         return self.episodes.count()
 
     @property
-    def current_episode(self):
-        """Return the current episode of the season."""
+    def current_episode_number(self):
+        """Return the current episode number of the season."""
         # continue initial watch
         if self.status == self.Status.IN_PROGRESS.value:
             sorted_episodes = sorted(
@@ -719,8 +787,8 @@ class Season(Media):
             )
 
         if sorted_episodes:
-            return sorted_episodes[0]
-        return None
+            return sorted_episodes[0].item.episode_number
+        return 0
 
     @property
     def repeats(self):
@@ -753,7 +821,6 @@ class Season(Media):
 
     def increase_progress(self):
         """Watch the next episode of the season."""
-        current_episode = self.current_episode
         season_metadata = services.get_media_metadata(
             "season",
             self.item.media_id,
@@ -762,14 +829,14 @@ class Season(Media):
         )
         episodes = season_metadata["episodes"]
 
-        if current_episode:
-            next_episode_number = tmdb.find_next_episode(
-                current_episode.item.episode_number,
-                episodes,
-            )
-        else:
+        if self.current_episode_number == 0:
             # start watching from the first episode
             next_episode_number = episodes[0]["episode_number"]
+        else:
+            next_episode_number = tmdb.find_next_episode(
+                self.current_episode_number,
+                episodes,
+            )
 
         today = timezone.now().date()
 
@@ -811,8 +878,7 @@ class Season(Media):
 
     def decrease_progress(self):
         """Unwatch the current episode of the season."""
-        episode_number = self.current_episode.item.episode_number
-        self.unwatch(episode_number)
+        self.unwatch(self.current_episode_number)
 
     def unwatch(self, episode_number):
         """Unwatch the episode instance."""
@@ -853,16 +919,18 @@ class Season(Media):
             self.item.source,
             [self.item.season_number],
         )
-        response = {"item": self.item}
-        max_progress = media_metadata["max_progress"]
+        response = {
+            "item": self.item,
+            "current_episode_number": self.current_episode_number,
+        }
 
-        response["current_episode"] = self.current_episode
-        if self.current_episode:
-            response["max"] = self.current_episode.item.episode_number == max_progress
-            response["min"] = False
-        else:
+        if self.current_episode_number == 0:
             response["max"] = False
             response["min"] = True
+        else:
+            max_progress = media_metadata["max_progress"]
+            response["max"] = self.current_episode_number == max_progress
+            response["min"] = False
 
         return response
 

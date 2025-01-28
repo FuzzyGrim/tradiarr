@@ -8,7 +8,7 @@ document.addEventListener('DOMContentLoaded', function() {
   searchForm.addEventListener('submit', function(e) {
     const mediaType = this.querySelector('select[name="media_type"]').value;
     const source = data.source;
-    console.log('source', source);
+
     if (mediaType === 'manga' && source) {
       const hiddenInput = document.createElement('input');
       hiddenInput.type = 'hidden';

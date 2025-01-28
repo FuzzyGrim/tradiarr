@@ -12,11 +12,12 @@
 {% block js %}
   <script src="{% static "js/fullcalendar.min.js" %}"></script>
   <script src="{% static "js/fullcalendar-bootstrap5.min.js" %}"></script>
+  {{ events|json_script:"events" }}
   <script>
     document.addEventListener("DOMContentLoaded", function() {
-      var calendarEl = document.getElementById("calendar");
-      var events = {{ events|safe }};
-      var calendar = new FullCalendar.Calendar(calendarEl, {
+      const calendarEl = document.getElementById("calendar");
+      const events = JSON.parse(document.getElementById('events').textContent);
+      const calendar = new FullCalendar.Calendar(calendarEl, {
         themeSystem: 'bootstrap5',
         events: events,
         locale: "en",

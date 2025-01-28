@@ -54,6 +54,7 @@
                 <a href="{{ media.item.url }}">
                   <img class="lazyload object-fit-cover"
                        data-src="{{ media.item.image }}"
+                       src="{{ IMG_NONE }}"
                        data-expand="1000"
                        width="40"
                        height="40"
@@ -105,7 +106,3 @@
     </div>
   {% endif %}
 {% endblock container %}
-
-{% block js %}
-  <script src="{% static "js/lazysizes.min.js" %}" async=""></script>
-{% endblock js %}

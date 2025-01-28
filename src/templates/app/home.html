@@ -13,8 +13,9 @@
         {% for media in media_list %}
           <div class="card media-card mx-auto">
             <a href="{{ media.item.url }}">
-              <img data-src="{{ media.item.image }}"
-                   class="card-img lazyload {% if media.item.image == IMG_NONE %}image-not-found{% else %}poster{% endif %}"
+              <img class="card-img lazyload {% if media.item.image == IMG_NONE %}image-not-found{% else %}poster{% endif %}"
+                   data-src="{{ media.item.image }}"
+                   src="{{ IMG_NONE }}"
                    alt="{{ media }}"
                    data-expand="1000" />
             </a>
@@ -38,7 +39,3 @@
     </div>
   {% endfor %}
 {% endblock container %}
-
-{% block js %}
-  <script src="{% static "js/lazysizes.min.js" %}" async=""></script>
-{% endblock js %}

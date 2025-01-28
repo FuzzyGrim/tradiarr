@@ -39,18 +39,15 @@
       </div>
 
       {% for episode in season.episodes %}
-        <div class="card mb-3">
+        <div class="card episode-card mb-3">
           <div class="row g-0">
 
-            {% if episode.image == IMG_NONE %}
-              <div class="col-md-4 episode-img-none"></div>
-            {% else %}
-              <div class="col-md-4">
-                <img src="{{ episode.image }}"
-                     class="w-100 h-100 object-fit-cover rounded-start"
-                     alt="E{{ episode.episode_number }}">
-              </div>
-            {% endif %}
+            <div class="col-md-4">
+              <img src="{{ IMG_NONE }}"
+                    data-src="{{ episode.image }}"
+                    class="lazyload {% if episode.image == IMG_NONE %}episode-img-none{% else %}episode-img{% endif %}"
+                    alt="E{{ episode.episode_number }}">
+            </div>
 
             <div class="col-md-8 card-body d-flex flex-column align-items-start pb-2">
 

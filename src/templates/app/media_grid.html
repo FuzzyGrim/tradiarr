@@ -40,6 +40,7 @@
         <div class="card media-card">
           <a href="{{ media.item.url }}">
             <img class="card-img lazyload {% if media.item.image == IMG_NONE %}image-not-found{% else %}poster{% endif %}"
+                 src="{{ IMG_NONE }}"
                  data-src="{{ media.item.image }}"
                  data-expand="1000"
                  alt="{{ media }}" />
@@ -79,7 +80,3 @@
     </div>
   {% endif %}
 {% endblock container %}
-
-{% block js %}
-  <script src="{% static "js/lazysizes.min.js" %}" async=""></script>
-{% endblock js %}

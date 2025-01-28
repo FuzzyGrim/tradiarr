@@ -66,11 +66,6 @@ main {
   padding: 1rem;
 }
 
-/* hide lazyload img until loaded */
-img.lazyload:not([src]) {
-  visibility: hidden;
-}
-
 /* hides asterisk for required fields in form */
 .asteriskField {
   display: none;
@@ -157,7 +152,9 @@ debug, info, success, warning, error */
     cursor: pointer;
   }
 
-  .image-not-found {
+  .image-not-found,
+  .lazyload,
+  .lazyloading {
     width: 100%;
     aspect-ratio: 2/3;
     object-fit: contain;
@@ -381,10 +378,13 @@ debug, info, success, warning, error */
   width: 12rem; /* need for smaller screens */
   background-color: var(--bg-foreground);
 
-  @media screen and (width <= 575px) {
+  @media screen and (width <= 991px) {
     width: 100%;
-    margin-top: 20rem;
     text-align: center;
+  }
+
+  @media screen and (width <= 575px) {
+    margin-top: 20rem;
   }
 }
 
@@ -392,28 +392,44 @@ debug, info, success, warning, error */
   background-color: var(--bg-foreground);
 }
 
-.episode-img-none {
-  background-image: url(https://www.themoviedb.org/assets/2/v4/glyphicons/basic/glyphicons-basic-38-picture-grey-c2ebdbb057f2a7614185931650f8cee23fa137b93812ccb132b9df511df1cfac.svg);
-  background-color: var(--bg-img-none);
-  background-position: center;
-  background-repeat: no-repeat;
-}
+.episode-card {
+  .episode-img {
+    border-top-left-radius: var(--bs-border-radius);
+    border-bottom-left-radius: var(--bs-border-radius);
+    height: 100%;
+    width: 100%;
+    aspect-ratio: 16/10;
+    object-fit: cover;
+  }
 
-.description {
-  /* show only 2 lines of text */
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
-  -webkit-box-orient: vertical;
-}
+  .episode-img-none,
+  .lazyload,
+  .lazyloading {
+    border-top-left-radius: var(--bs-border-radius);
+    border-bottom-left-radius: var(--bs-border-radius);
+    height: 100%;
+    width: 100%;
+    aspect-ratio: 16/10;
+    object-fit: contain;
+    background-color: var(--bg-img-none);
+  }
 
-.date-btn-group {
-  .btn {
-    border-color: #495057;
+  .description {
+    /* show only 2 lines of text */
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
 
-    &:hover {
-      color: white;
+  .date-btn-group {
+    .btn {
+      border-color: #495057;
+
+      &:hover {
+        color: white;
+      }
     }
   }
 }
@@ -546,4 +562,25 @@ debug, info, success, warning, error */
 }
 .month {
   text-align: left;
+}
+
+#timeline {
+  border: 1px solid;
+}
+
+.sg-task {
+  border-color: var(--bs-border-color);
+  border-radius: 3px;
+}
+
+.sg-task-content {
+  /* allow text truncation */
+  position: relative !important;
+  color: #fff;
+  padding-left: 5px !important;
+}
+
+/* disable clicking on column header */
+.column-header-cell {
+  pointer-events: none;
 }

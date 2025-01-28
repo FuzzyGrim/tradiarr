@@ -22,7 +22,7 @@
              aria-label="Basic radio toggle button group">
           <a href="{% url 'search' %}?q={{ request.GET.q }}&media_type=manga"
              class="btn btn-outline-secondary {% if request.GET.source != "mangaupdates" %}active{% endif %}">MyAnimeList</a>
- 
+
           <a href="{% url 'search' %}?q={{ request.GET.q }}&media_type=manga&source=mangaupdates"
              class="btn btn-outline-secondary {% if request.GET.source == "mangaupdates" %}active{% endif %}">MangaUpdates</a>
         </div>
@@ -32,8 +32,10 @@
       {% for media in query_list %}
         <div class="card media-card">
           <a href="{% url 'media_details' source=media.source media_type=media.media_type media_id=media.media_id title=media.title|slug %}">
-            <img src="{{ media.image }}"
-                 class="card-img {% if media.image == IMG_NONE %}image-not-found{% else %}poster{% endif %}"
+            <img class="card-img lazyload {% if media.image == IMG_NONE %}image-not-found{% else %}poster{% endif %}"
+                 src="{{ IMG_NONE }}"
+                 data-src="{{ media.image }}"
+                 data-expand="1000"
                  alt="{{ media.title }}" />
           </a>
 
@@ -51,5 +53,6 @@
 {% endblock container %}
 
 {% block js %}
-  <script src="{% static 'js/manga-source.js' %}" data-source="{{ request.GET.source }}"></script>
+  <script src="{% static 'js/manga-source.js' %}"
+          data-source="{{ request.GET.source }}"></script>
 {% endblock js %}

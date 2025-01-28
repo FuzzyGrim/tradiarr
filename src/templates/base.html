@@ -232,8 +232,9 @@
               </form>
             </div>
           {% endblock search %}
-
-          <div class="container flex-grow-1">
+          
+          {% comment %} flex-fill is needed to make the container fill the remaining space {% endcomment %}
+          <div class="container flex-fill">
             {% for message in messages %}<div class="alert alert-{{ message.tags }}">{{ message|linebreaksbr }}</div>{% endfor %}
             {% block container %}
             {% endblock container %}
@@ -242,6 +243,7 @@
       </div>
       <script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
       <script src="{% static 'js/htmx.min.js' %}"></script>
+      <script src="{% static "js/lazysizes.min.js" %}" async=""></script>
       {% block js %}
       {% endblock js %}
     {% endblock body %}

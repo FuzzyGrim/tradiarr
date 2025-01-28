@@ -89,8 +89,8 @@
       {% for item in items.all %}
         <div class="card media-card">
           <a href="{{ item.url }}">
-            <img src="{{ item.image }}"
-                class="card-img {% if item.image == IMG_NONE %}image-not-found{% else %}poster{% endif %}"
+            <img src="{{ IMG_NONE }}" data-src="{{ item.image }}"
+                class="card-img lazyload {% if item.image == IMG_NONE %}image-not-found{% else %}poster{% endif %}"
                 alt="{{ item.title }}" />
           </a>
 
